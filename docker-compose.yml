@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # 1. API Service (Aplikasi Golang buatan tim TIF)
+  api:
+    container_name: elasticsix_api
+    build: . # Membaca Dockerfile di folder ini
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - elasticsix_net
+
+  # 2. Database Utama (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: elasticsix_postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: bank_a_db
+    ports:
+      - "5432:5432" # Agar tim SI/TIF bisa buka DB pakai DBeaver/PgAdmin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - elasticsix_net
+
+  # 3. Caching Layer (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: elasticsix_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - elasticsix_net
+
+  # 4. Message Queue (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: elasticsix_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    ports:
+      - "5672:5672"   # Port untuk aplikasi Golang
+      - "15672:15672" # Port Dashboard UI (Buka di browser: localhost:15672)
+    networks:
+      - elasticsix_net
+
+# Definisikan network agar semua container bisa saling sapa
+networks:
+  elasticsix_net:
+    driver: bridge
+
+# Definisikan volume agar data PostgreSQL tidak hilang saat laptop dimatikan
+volumes:
+  pgdata:
