@@ -1,0 +1,34 @@
+peak-load-management/
+│
+├── cmd/
+│   └── api/
+│       └── main.go              # Titik masuk utama aplikasi Golang (Entry Point)
+│
+├── internal/                    # Logika inti aplikasi (Arena tim TIF - Fathur)
+│   ├── config/                  # Konfigurasi variabel environment (URL DB, Redis, RabbitMQ)
+│   ├── handlers/                # HTTP Controller (Endpoint Create Tx, Cek Saldo)
+│   ├── middleware/              # Tempat menaruh Rate Limiter & Circuit Breaker
+│   ├── repository/              # Urusan query langsung ke PostgreSQL (Database)
+│   ├── services/                # Logika bisnis utama (Validasi saldo, dll)
+│   ├── cache/                   # Logika integrasi ke Redis (Read-heavy)
+│   └── queue/                   # Logika Producer & Consumer RabbitMQ (Write-heavy)
+│
+├── load-test/                   # Arena siksaan sistem (Arena tim TEKKOM - Haris, Gilang, Oxzy)
+│   ├── baseline-test.js         # Script k6 untuk menguji sistem SEBELUM dioptimasi
+│   └── peak-test.js             # Script k6 untuk menguji sistem SESUDAH dipasang queue & cache
+│
+├── monitoring/                  # Konfigurasi Observability
+│   ├── prometheus/              # File prometheus.yml untuk scraping metrik
+│   └── grafana/                 # File dashboard JSON (Target RPS, Latency, CPU)
+│
+├── docs/                        # Arena manajemen proyek (Arena tim SI - Rizka, Anugerah)
+│   ├── LK-1_Final.pdf           # Laporan Lembar Kerja
+│   ├── architecture.png         # Diagram arsitektur sistem
+│   └── capacity-planning.md     # Hitungan estimasi biaya server & sizing
+│
+├── .gitignore                   # File untuk mengabaikan file sampah agar tidak ter-push ke GitHub
+├── docker-compose.yml           # "Resep" infrastruktur lokal (DB, Redis, MQ, API)
+├── Dockerfile                   # Blueprint untuk membungkus aplikasi Golang ke dalam container
+├── go.mod                       # Daftar library/dependency Golang
+├── go.sum                       # Checksum library Golang
+└── README.md                    # Halaman muka GitHub (Penjelasan proyek & cara run)
