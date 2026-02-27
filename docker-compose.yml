@@ -1,10 +1,10 @@
 version: '3.8'
 
 services:
-  # 1. API Service (Aplikasi Golang buatan tim TIF)
+  # 1. API Service (Golang)
   api:
     container_name: elasticsix_api
-    build: . # Membaca Dockerfile di folder ini
+    build: .
     ports:
       - "8080:8080"
     environment:
@@ -18,7 +18,7 @@ services:
     networks:
       - elasticsix_net
 
-  # 2. Database Utama (PostgreSQL)
+  # 2. Database (PostgreSQL)
   postgres:
     image: postgres:15-alpine
     container_name: elasticsix_postgres
@@ -27,13 +27,13 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: bank_a_db
     ports:
-      - "5432:5432" # Agar tim SI/TIF bisa buka DB pakai DBeaver/PgAdmin
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
       - elasticsix_net
 
-  # 3. Caching Layer (Redis)
+  # 3. Caching (Redis)
   redis:
     image: redis:7-alpine
     container_name: elasticsix_redis
@@ -50,16 +50,46 @@ services:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
     ports:
-      - "5672:5672"   # Port untuk aplikasi Golang
-      - "15672:15672" # Port Dashboard UI (Buka di browser: localhost:15672)
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - elasticsix_net
 
-# Definisikan network agar semua container bisa saling sapa
+  # ==========================================
+  # NEW: OBSERVABILITY & MONITORING LAYER
+  # ==========================================
+
+  # 5. Prometheus (Pengepul Metrik)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: elasticsix_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      # Menyambungkan file prometheus.yml yang tadi kita buat ke dalam container
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - elasticsix_net
+
+  # 6. Grafana (Dashboard Visualisasi)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: elasticsix_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    depends_on:
+      - prometheus
+    networks:
+      - elasticsix_net
+
 networks:
   elasticsix_net:
     driver: bridge
 
-# Definisikan volume agar data PostgreSQL tidak hilang saat laptop dimatikan
 volumes:
   pgdata:

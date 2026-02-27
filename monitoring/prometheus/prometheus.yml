@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 5s # Tarik data setiap 5 detik (cocok untuk simulasi k6)
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'elasticsix_api'
+    static_configs:
+      # Targetkan ke container API Golang kita di port 8080
+      - targets: ['api:8080']
