@@ -86,6 +86,7 @@ services:
       - prometheus
     networks:
       - elasticsix_net
+      
 
 networks:
   elasticsix_net:

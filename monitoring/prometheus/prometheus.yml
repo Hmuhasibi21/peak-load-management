@@ -1,12 +1,17 @@
 global:
-  scrape_interval: 5s # Tarik data setiap 5 detik (cocok untuk simulasi k6)
+  scrape_interval: 5s # Prometheus akan menyedot data setiap 5 detik (cocok untuk Load Test biar real-time!)
+  evaluation_interval: 5s
 
 scrape_configs:
-  - job_name: 'prometheus'
+  # 1. Memantau kesehatan Prometheus itu sendiri
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
-  - job_name: 'elasticsix_api'
+  # 2. Memantau API Golang buatan Fathur/Sakha
+  - job_name: "golang_api"
     static_configs:
-      # Targetkan ke container API Golang kita di port 8080
-      - targets: ['api:8080']
+      - targets: ["api:8080"] # Mengarah ke nama service 'api' di docker-compose
+
+
+  # (Nanti kita bisa tambah target untuk RabbitMQ dan PostgreSQL di sini)
