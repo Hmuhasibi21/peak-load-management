@@ -12,6 +12,11 @@ scrape_configs:
   - job_name: "golang_api"
     static_configs:
       - targets: ["api:8080"] # Mengarah ke nama service 'api' di docker-compose
+  
+  # 3. Memantau Message Queue RabbitMQ
+  - job_name: "rabbitmq"
+    static_configs:
+      - targets: ["rabbitmq:15692"] # 15692 adalah port default metrik RabbitMQ
 
 
   # (Nanti kita bisa tambah target untuk RabbitMQ dan PostgreSQL di sini)

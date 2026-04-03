@@ -12,7 +12,7 @@ export let options = {
 
 // 2. Skenario yang dilakukan oleh setiap Virtual User
 export default function () {
-    const url = 'http://localhost:8081/api/v1/transfer';
+    const url = 'http://host.docker.internal:8080/api/v1/transfer';
     
     // Payload Data Dummy (Haris transfer Rp 10.000 ke Fathur)
     const payload = JSON.stringify({

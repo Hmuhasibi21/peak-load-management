@@ -1,7 +1,7 @@
 # ==========================================
 # STAGE 1: BUILDER (Fase Kompilasi Go)
 # ==========================================
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Set direktori kerja di dalam container
 WORKDIR /app

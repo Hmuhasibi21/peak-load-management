@@ -28,7 +28,7 @@ func initDB() {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		// Disesuaikan dengan docker-compose.yml milik ElasticSix
-		dbURL = "postgres://root:password@localhost:5432/bank_a_db?sslmode=disable"
+		dbURL = "postgres://root:password@postgres:5432/bank_a_db?sslmode=disable"
 	}
 
 	db, err = sql.Open("postgres", dbURL)
@@ -41,7 +41,7 @@ func initDB() {
 // 2. Init Redis Cache
 func initRedis() {
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "redis:6379", // <--- Koma ganda yang memicu error sudah dihapus
 		Password: "",
 		DB:       0,
 	})
@@ -52,7 +52,7 @@ func initRedis() {
 func initRabbitMQ() {
 	var err error
 	// Disesuaikan dengan kredensial docker-compose.yml
-	mqConn, err = amqp.Dial("amqp://admin:admin123@localhost:5672/")
+	mqConn, err = amqp.Dial("amqp://admin:admin123@rabbitmq:5672/")
 	if err != nil {
 		log.Fatal("Gagal konek ke RabbitMQ:", err)
 	}
@@ -102,7 +102,7 @@ func main() {
 	// Membuat sensor khusus untuk service ini
 	prometheus := fiberprometheus.New("elasticsix_api") 
 	
-	// Membuat rute http://localhost:8081/metrics agar bisa disedot Prometheus
+	// Membuat rute http://localhost:8080/metrics agar bisa disedot Prometheus
 	prometheus.RegisterAt(app, "/metrics")              
 	
 	// Aktifkan sensor untuk memantau SEMUA endpoint (Kecepatan, Error, Jumlah Request)
@@ -178,7 +178,7 @@ func main() {
 		})
 	})
 
-	// Menjalankan Server di Port 8081 (Sesuai tes lokalmu agar tidak bentrok)
-	fmt.Println("🚀 Server API Bank A (ElasticSix) berjalan di Port 8081")
-	log.Fatal(app.Listen(":8081"))
+	// Menjalankan Server di Port 8080 (Sesuai tes lokalmu agar tidak bentrok)
+	fmt.Println("🚀 Server API Bank A (ElasticSix) berjalan di Port 8080")
+	log.Fatal(app.Listen(":8080"))
 }
