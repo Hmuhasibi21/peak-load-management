@@ -86,6 +86,19 @@ services:
       - prometheus
     networks:
       - elasticsix_net
+  
+  # 7. Redis Exporter (Pengepul Metrik Cache)
+  redis-exporter:
+    image: oliver006/redis_exporter:alpine
+    container_name: elasticsix_redis_exporter
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+    networks:
+      - elasticsix_net
       
 
 networks:
