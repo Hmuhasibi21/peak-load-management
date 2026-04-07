@@ -42,18 +42,23 @@ func initDB() {
 	masterURL := os.Getenv("DB_MASTER_URL")
 	replicaURL := os.Getenv("DB_REPLICA_URL")
 
+	// Menggunakan localhost agar bisa di-run lokal (go run main.go) di luar Docker
 	if masterURL == "" {
-		masterURL = "postgres://root:password@postgres:5432/bank_a_db?sslmode=disable"
+		masterURL = "postgres://root:password@localhost:5432/bank_a_db?sslmode=disable"
 	}
 	if replicaURL == "" {
-		replicaURL = "postgres://root:password@postgres_replica:5432/bank_a_db?sslmode=disable"
+		replicaURL = "postgres://root:password@localhost:5433/bank_a_db?sslmode=disable" // PORT 5433 (Replica)
 	}
 
 	dbMaster, err = sql.Open("postgres", masterURL)
-	if err != nil { log.Fatal("Gagal konek ke Master DB:", err) }
+	if err != nil {
+		log.Fatal("Gagal konek ke Master DB:", err)
+	}
 
 	dbReplica, err = sql.Open("postgres", replicaURL)
-	if err != nil { log.Fatal("Gagal konek ke Replica DB:", err) }
+	if err != nil {
+		log.Fatal("Gagal konek ke Replica DB:", err)
+	}
 
 	fmt.Println("🗄️ Berhasil terhubung ke Master dan Replica Database!")
 }
@@ -61,7 +66,7 @@ func initDB() {
 // 2. Init Redis Cache
 func initRedis() {
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "redis:6379",
+		Addr:     "localhost:6379",
 		Password: "",
 		DB:       0,
 	})
@@ -71,17 +76,23 @@ func initRedis() {
 // 3. Init RabbitMQ
 func initRabbitMQ() {
 	var err error
-	mqConn, err = amqp.Dial("amqp://admin:admin123@rabbitmq:5672/")
-	if err != nil { log.Fatal("Gagal konek ke RabbitMQ:", err) }
+	mqConn, err = amqp.Dial("amqp://admin:admin123@localhost:5672/")
+	if err != nil {
+		log.Fatal("Gagal konek ke RabbitMQ:", err)
+	}
 
 	mqChannel, err = mqConn.Channel()
-	if err != nil { log.Fatal("Gagal buka channel RabbitMQ:", err) }
+	if err != nil {
+		log.Fatal("Gagal buka channel RabbitMQ:", err)
+	}
 
 	_, err = mqChannel.QueueDeclare(
 		"transfer_queue", true, false, false, false, nil,
 	)
-	if err != nil { log.Fatal("Gagal deklarasi queue RabbitMQ:", err) }
-	
+	if err != nil {
+		log.Fatal("Gagal deklarasi queue RabbitMQ:", err)
+	}
+
 	fmt.Println("🐇 RabbitMQ siap menerima antrean transfer!")
 }
 
@@ -118,9 +129,9 @@ func startRabbitMQWorkers(numWorkers int) {
 			for d := range msgs {
 				// Simulasi waktu insert data ke dbMaster
 				time.Sleep(1 * time.Second)
-				
+
 				// Tandai bahwa pesan sudah sukses diproses (Manual Ack)
-				d.Ack(false) 
+				d.Ack(false)
 			}
 		}(i)
 	}
@@ -181,16 +192,30 @@ func main() {
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
-	app.Use(recover.New()) // Anti-Crash Panic
+	app.Use(recover.New())              // Anti-Crash Panic
 	app.Use(limiter.New(limiter.Config{ // Rate Limiting
-		Max:        20,
-		Expiration: 1 * time.Minute,
+		Max:          20,
+		Expiration:   1 * time.Minute,
 		KeyGenerator: func(c *fiber.Ctx) string { return c.IP() },
 		LimitReached: func(c *fiber.Ctx) error {
 			return c.Status(429).JSON(fiber.Map{"status": "error", "message": "Terlalu banyak request."})
 		},
 	}))
 	// ==========================================
+
+	// ==========================================
+	// ENDPOINT KESEHATAN SISTEM (HEALTH CHECK)
+	// ==========================================
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.Status(200).JSON(fiber.Map{
+			"status":  "success",
+			"message": "🚀 API Bank A (ElasticSix) is UP and RUNNING!",
+		})
+	})
+
+	app.Get("/ping", func(c *fiber.Ctx) error {
+		return c.SendString("PONG! 🏓 Server is healthy!")
+	})
 
 	// ------------------------------------------------------------------------
 	// ENDPOINT 1: BALANCE INQUIRY (Redis + Circuit Breaker + Replica DB)
@@ -200,17 +225,20 @@ func main() {
 		cacheKey := "balance_user_" + userID
 
 		cachedBalance, err := rdb.Get(ctx, cacheKey).Result()
-		
+
 		if err == redis.Nil { // Cache Miss
 			hasilDB, cbErr := cb.Execute(func() (interface{}, error) {
 				// Simulasi error untuk demo Circuit Breaker ke dosen
-				if userID == "error" { return nil, fmt.Errorf("database timeout") }
+				if userID == "error" {
+					return nil, fmt.Errorf("database timeout")
+				}
 				return "Rp 5.000.000", nil // Simulasi ambil dari dbReplica
 			})
 
 			if cbErr != nil {
 				return c.Status(503).JSON(fiber.Map{
-					"status": "error", "source": "Circuit Breaker",
+					"status":  "error",
+					"source":  "Circuit Breaker",
 					"message": "Sistem database gangguan. Coba lagi 15 detik.",
 				})
 			}

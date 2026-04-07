@@ -5,23 +5,24 @@ services:
   api:
     container_name: elasticsix_api
     build: .
+    # FIX BENTROK 1: Port luar diubah ke 8000 agar kamu tetap bisa menjalankan 'go run main.go' di port 8080 laptopmu
     ports:
-      - "8080:8080"
+      - "8000:8080"
     environment:
-      - DB_HOST=postgres
-      - REDIS_HOST=redis
-      - RABBITMQ_HOST=rabbitmq
+      - DB_MASTER_URL=postgres://root:password@postgres:5432/bank_a_db?sslmode=disable
+      - DB_REPLICA_URL=postgres://root:password@postgres_replica:5432/bank_a_db?sslmode=disable
     depends_on:
       - postgres
+      - postgres_replica
       - redis
       - rabbitmq
     networks:
       - elasticsix_net
 
-  # 2. Database (PostgreSQL)
+  # 2. Database MASTER (PostgreSQL) - Khusus untuk Worker / Insert
   postgres:
     image: postgres:15-alpine
-    container_name: elasticsix_postgres
+    container_name: elasticsix_postgres_master
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: password
@@ -29,11 +30,25 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_master:/var/lib/postgresql/data
     networks:
       - elasticsix_net
 
-  # 3. Caching (Redis)
+  # 3. Database REPLICA (PostgreSQL) - Khusus untuk Read API & Circuit Breaker
+  postgres_replica:
+    image: postgres:15-alpine
+    container_name: elasticsix_postgres_replica
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: bank_a_db
+    # FIX BENTROK 2: Port luar diset ke 5433 agar tidak berebut dengan port 5432 milik Master
+    ports:
+      - "5433:5432"
+    networks:
+      - elasticsix_net
+
+  # 4. Caching (Redis)
   redis:
     image: redis:7-alpine
     container_name: elasticsix_redis
@@ -42,7 +57,7 @@ services:
     networks:
       - elasticsix_net
 
-  # 4. Message Queue (RabbitMQ)
+  # 5. Message Queue (RabbitMQ)
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: elasticsix_rabbitmq
@@ -56,24 +71,23 @@ services:
       - elasticsix_net
 
   # ==========================================
-  # NEW: OBSERVABILITY & MONITORING LAYER
+  # OBSERVABILITY & MONITORING LAYER
   # ==========================================
 
-  # 5. Prometheus (Pengepul Metrik)
+  # 6. Prometheus (Pengepul Metrik)
   prometheus:
     image: prom/prometheus:latest
     container_name: elasticsix_prometheus
     ports:
       - "9090:9090"
     volumes:
-      # Menyambungkan file prometheus.yml yang tadi kita buat ke dalam container
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
     networks:
       - elasticsix_net
 
-  # 6. Grafana (Dashboard Visualisasi)
+  # 7. Grafana (Dashboard Visualisasi)
   grafana:
     image: grafana/grafana:latest
     container_name: elasticsix_grafana
@@ -87,7 +101,7 @@ services:
     networks:
       - elasticsix_net
   
-  # 7. Redis Exporter (Pengepul Metrik Cache)
+  # 8. Redis Exporter (Pengepul Metrik Cache)
   redis-exporter:
     image: oliver006/redis_exporter:alpine
     container_name: elasticsix_redis_exporter
@@ -99,11 +113,10 @@ services:
       - redis
     networks:
       - elasticsix_net
-      
 
 networks:
   elasticsix_net:
     driver: bridge
 
 volumes:
-  pgdata:
+  pgdata_master:
