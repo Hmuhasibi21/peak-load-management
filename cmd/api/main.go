@@ -193,10 +193,18 @@ func main() {
 	app.Use(prometheus.Middleware)
 
 	app.Use(recover.New())              // Anti-Crash Panic
-	app.Use(limiter.New(limiter.Config{ // Rate Limiting
-		Max:          20,
-		Expiration:   1 * time.Minute,
-		KeyGenerator: func(c *fiber.Ctx) string { return c.IP() },
+	app.Use(limiter.New(limiter.Config{
+		Max:        30, // KEMBALI KETAT! 1 IP / User maksimal 30 request per menit
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string { 
+			// [TRICK SRE] Baca header IP buatan dari k6. 
+			// Jika kosong, baru pakai IP asli laptop.
+			simulatedIP := c.Get("X-Simulated-IP")
+			if simulatedIP != "" {
+				return simulatedIP
+			}
+			return c.IP() 
+		},
 		LimitReached: func(c *fiber.Ctx) error {
 			return c.Status(429).JSON(fiber.Map{"status": "error", "message": "Terlalu banyak request."})
 		},

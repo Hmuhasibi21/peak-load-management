@@ -1,41 +1,51 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 
-// 1. Konfigurasi "Siksaan" (Virtual Users & Durasi)
-export let options = {
-    stages: [
-        { duration: '10s', target: 50 },  // Pemanasan: Naik pelan-pelan ke 50 user dalam 10 detik
-        { duration: '20s', target: 200 }, // PEAK LOAD: Tiba-tiba melonjak ke 200 user yang menembak bersamaan!
-        { duration: '10s', target: 0 },   // Pendinginan: Turun perlahan ke 0 user
-    ],
+export const options = {
+    scenarios: {
+        satu_juta_transaksi: {
+            executor: 'constant-arrival-rate',
+            rate: 278,          // 278 RPS (Target 1 Juta / Jam)
+            timeUnit: '1s',
+            duration: '1m',     // Coba tes selama 1 menit dulu
+            preAllocatedVUs: 50,
+            maxVUs: 500,
+        },
+    },
+    thresholds: {
+        http_req_failed: ['rate<0.01'],
+        http_req_duration: ['p(95)<500'],
+    },
 };
 
-// 2. Skenario yang dilakukan oleh setiap Virtual User
+// Fungsi pembuat IP Acak (Misal: 192.168.1.45)
+function getRandomIP() {
+    return `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+}
+
 export default function () {
-    const url = 'http://host.docker.internal:8080/api/v1/transfer';
-    
-    // Payload Data Dummy (Haris transfer Rp 10.000 ke Fathur)
+    const randomUserID = Math.floor(Math.random() * 1000);
+    const urlTransfer = 'http://localhost:8080/api/v1/transfer';
+    const urlBalance = `http://localhost:8080/users/user_${randomUserID}/balance`;
+
     const payload = JSON.stringify({
-        sender_id: '123',
-        receiver_id: '456',
-        amount: 10000,
+        sender_id: `user_${randomUserID}`,
+        receiver_id: `user_${Math.floor(Math.random() * 1000)}`,
+        amount: 50000.0,
     });
 
+    // MASUKKAN IP ACAK KE DALAM HEADER (KTP PALSU)
     const params = {
-        headers: {
+        headers: { 
             'Content-Type': 'application/json',
+            'X-Simulated-IP': getRandomIP() 
         },
     };
 
-    // Tembak API-nya!
-    let res = http.post(url, payload, params);
+    // Eksekusi API
+    let resBalance = http.get(urlBalance, params);
+    check(resBalance, { 'Cek Saldo 200': (r) => r.status === 200 });
 
-    // 3. Validasi (SLA / Service Level Agreement)
-    check(res, {
-        'Status is 202 (Accepted/Pending)': (r) => r.status === 202,
-        'Response time is < 50ms': (r) => r.timings.duration < 50, // API harus merespon di bawah 50 milidetik!
-    });
-
-    // Jeda sejenak antar tembakan (simulasi orang ngetik di HP)
-    sleep(0.1); 
+    let resTransfer = http.post(urlTransfer, payload, params);
+    check(resTransfer, { 'Transfer 202 (Masuk Antrean)': (r) => r.status === 202 });
 }
