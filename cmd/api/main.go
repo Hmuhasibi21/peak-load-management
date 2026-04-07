@@ -66,19 +66,29 @@ func initDB() {
 // 2. Init Redis Cache
 func initRedis() {
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "redis:6379",
 		Password: "",
 		DB:       0,
 	})
 	fmt.Println("⚡ Redis Client disiapkan!")
 }
 
-// 3. Init RabbitMQ
+// 3. Init RabbitMQ (DENGAN RETRY MECHANISM SRE)
 func initRabbitMQ() {
 	var err error
-	mqConn, err = amqp.Dial("amqp://admin:admin123@localhost:5672/")
+	
+	// [TRICK SRE] Coba konek maksimal 5 kali, jangan langsung mati kalau gagal
+	for i := 1; i <= 5; i++ {
+		mqConn, err = amqp.Dial("amqp://admin:admin123@rabbitmq:5672/")
+		if err == nil {
+			break // Sukses? Langsung keluar dari looping!
+		}
+		fmt.Printf("⏳ Menunggu RabbitMQ siap... (Percobaan %d/5)\n", i)
+		time.Sleep(3 * time.Second) // Tunggu 3 detik sebelum coba lagi
+	}
+
 	if err != nil {
-		log.Fatal("Gagal konek ke RabbitMQ:", err)
+		log.Fatal("❌ Gagal konek ke RabbitMQ setelah 5 percobaan:", err)
 	}
 
 	mqChannel, err = mqConn.Channel()

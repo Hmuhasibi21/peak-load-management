@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  # ==========================================
+  # LOAD BALANCER LAYER (GERBANG DEPAN)
+  # ==========================================
+  nginx:
+    image: nginx:alpine
+    container_name: elasticsix_nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80" # Membuka Port 80 di laptopmu (Default HTTP)
+    depends_on:
+      - api
+    networks:
+      - elasticsix_net
+
+  # ==========================================
+  # API LAYER
+  # ==========================================
   # 1. API Service (Golang)
   api:
     container_name: elasticsix_api
@@ -19,6 +37,9 @@ services:
     networks:
       - elasticsix_net
 
+  # ==========================================
+  # DATABASE & CACHE / QUEUE LAYER
+  # ==========================================
   # 2. Database MASTER (PostgreSQL) - Khusus untuk Worker / Insert
   postgres:
     image: postgres:15-alpine
