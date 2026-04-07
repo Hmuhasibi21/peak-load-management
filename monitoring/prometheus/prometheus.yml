@@ -18,5 +18,9 @@ scrape_configs:
     static_configs:
       - targets: ["rabbitmq:15692"] # 15692 adalah port default metrik RabbitMQ
 
+  # 4. Memantau Redis
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
 
   # (Nanti kita bisa tambah target untuk RabbitMQ dan PostgreSQL di sini)
