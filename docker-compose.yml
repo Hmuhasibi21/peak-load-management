@@ -7,6 +7,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: elasticsix_nginx
+    restart: always     # 👈 [TRICK SRE] Babysitter aktif! NGINX akan otomatis bangkit kalau mati.
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
@@ -23,6 +24,7 @@ services:
   api:
     container_name: elasticsix_api
     build: .
+    restart: always     # 👈 [TRICK SRE] Babysitter aktif! API Golang akan otomatis bangkit kalau kalah balapan waktu (Race Condition).
     # FIX BENTROK 1: Port luar diubah ke 8000 agar kamu tetap bisa menjalankan 'go run main.go' di port 8080 laptopmu
     ports:
       - "8000:8080"

@@ -1,85 +1,70 @@
-# 🚀 CHEATSHEET & SETUP COMMANDS - ELASTICSIX
-
-Dokumen ini berisi kumpulan perintah penting untuk menjalankan, memodifikasi, dan menguji project Peak Load Management System (Capstone Bank A).
-
----
-
-## 👥 1. Perintah Dasar Git (Untuk Semua Anggota Tim)
-
-Gunakan perintah ini untuk sinkronisasi kode dengan GitHub.
-
-- **Clone Repository (Pertama kali):**
-  `git clone <link-repo-github-elasticsix>`
-- **Menyimpan perubahan dan Push ke GitHub:**
-  `git add .`
-  `git commit -m "pesan perubahan kamu, contoh: feat: add redis cache"`
-  `git push origin main`
-- **Mengambil update terbaru dari GitHub (Wajib sebelum ngoding!):**
-  `git pull origin main`
+# 🚀 ELASTICSIX SRE CHEATSHEET & PLAYBOOK
+*Dokumen panduan operasional harian untuk sistem Microservices Bank A.*
 
 ---
 
-## 🐳 2. Infrastruktur & Docker (Tim Tekkom: Haris, Gilang, Oxzy)
-
-Pastikan Docker Desktop sudah menyala sebelum menjalankan perintah ini.
-
-- **Menyalakan Semua Server (DB, Redis, MQ, API, Grafana):**
-  `docker compose up -d --build`
-- **Mematikan Semua Server:**
-  `docker compose down`
-- **Melihat Status Server (Apakah ada yang mati/crash?):**
-  `docker compose ps`
-- **Melihat Log Aplikasi (Untuk cek error dari API Golang):**
-  `docker logs elasticsix_api -f`
-- **Melihat Log Database PostgreSQL:**
-  `docker logs elasticsix_postgres -f`
+## 🏗️ 1. RINGKASAN ARSITEKTUR SISTEM
+Sistem ini dirancang kebal terhadap lonjakan *traffic* (Peak Load) dengan komponen berikut:
+* **Load Balancer & Gateway:** NGINX (Meneruskan *traffic* ke API).
+* **API Service:** Golang (Fiber) dengan *Rate Limiter* & *Prometheus Middleware*.
+* **Database (Read/Write Split):** PostgreSQL Master (Write) & PostgreSQL Replica (Read).
+* **Caching:** Redis (Mempercepat pengecekan saldo).
+* **Message Queue / Asynchronous:** RabbitMQ (Mengantrekan transaksi transfer agar DB tidak *crash*).
+* **Keamanan Ekstra:** Circuit Breaker (Memutus koneksi DB jika terjadi *timeout*).
+* **Monitoring & Observability:** Prometheus & Grafana.
 
 ---
 
-## 🐹 3. Golang & Setup Library (Tim TIF: Fathur)
+## 💻 2. PERINTAH SAKTI DOCKER (JALUR SRE)
+Sebagai SRE, kita **TIDAK LAGI** menggunakan `go run main.go`. Biarkan Docker yang mengurus semuanya di latar belakang.
 
-Perintah ini dijalankan jika ingin menambah fitur baru di backend. Pastikan sudah menginstal Golang di laptop (versi 1.21+).
-
-- **Inisialisasi Project (Sudah dilakukan Haris):**
-  `go mod init peak-load-management`
-- **Install Framework Go Fiber (Web Framework Utama):**
-  `go get -u github.com/gofiber/fiber/v2`
-- **Install Driver PostgreSQL (GORM / PGX):**
-  `go get -u gorm.io/gorm`
-  `go get -u gorm.io/driver/postgres`
-- **Install Driver Redis:**
-  `go get -u github.com/redis/go-redis/v9`
-- **Install Driver RabbitMQ:**
-  `go get -u github.com/rabbitmq/amqp091-go`
-- **Merapikan & Download Library yang kurang:**
-  `go mod tidy`
-
----
-
-## 🔫 4. Load Testing dengan k6 (Tim Tekkom / SRE)
-
-Perintah untuk menyiksa server dan melihat apakah SLA (Latency < 200ms) tercapai.
-
-- **Install k6 (Mac Users):**
-  `brew install k6`
-- **Install k6 (Windows Users):**
-  `winget install k6`
-- **Jalankan Skenario Baseline (Tes Pemanasan):**
-  `k6 run load-test/baseline.js`
-- **Jalankan Skenario Peak Load (Nanti dibuat saat API selesai):**
-  `k6 run load-test/peak-test.js`
-
-_(SRE Hack: Jika k6 belum terinstall di laptop, bisa jalankan k6 via Docker)_:
-`docker run --rm -i -v "$(pwd):/app" -w /app grafana/k6 run load-test/baseline.js`
+* **Menyalakan Seluruh Sistem (Auto-Build & Background):**
+    ```bash
+    docker compose up --build -d
+    ```
+* **Mematikan Seluruh Sistem:**
+    ```bash
+    docker compose down
+    ```
+* **Melihat Status Services (Apakah sudah "Up"?):**
+    ```bash
+    docker ps
+    ```
+* **Melihat Log Error dari API Golang:**
+    ```bash
+    docker logs elasticsix_api -f
+    ```
 
 ---
 
-## 🌐 5. Daftar Tautan Penting (Akses via Browser)
+## 🔗 3. URL & CREDENTIALS PENTING
 
-Saat `docker compose up -d` sudah hijau semua, akses link ini:
+| Layanan | URL Lokal (Browser) | Username | Password |
+| :--- | :--- | :--- | :--- |
+| **API / NGINX** | `http://localhost` | - | - |
+| **Grafana** | `http://localhost:3000` | `admin` | `admin123` |
+| **RabbitMQ UI** | `http://localhost:15672` | `admin` | `admin123` |
+| **Prometheus** | `http://localhost:9090` | - | - |
 
-1. **API Golang (Pintu Masuk):** `http://localhost:8080/ping`
-2. **RabbitMQ Dashboard (Antrean Transaksi):** `http://localhost:15672` (User: `admin`, Pass: `admin123`)
-3. **Prometheus (Data Scraper):** `http://localhost:9090`
-4. **Grafana (Monitoring Utama untuk Demo):** `http://localhost:3000` (User: `admin`, Pass: `admin123`)
-5. **Database PostgreSQL:** Buka DBeaver / PgAdmin -> host: `localhost`, port: `5432`, user: `root`, pass: `password`, db: `bank_a_db`.
+> **🔥 CATATAN PENTING GRAFANA:** > Saat setting *Data Source* Prometheus di dalam Grafana, gunakan URL **`http://prometheus:9090`** (bukan localhost), karena Grafana harus memanggil *container* Prometheus lewat jalur internal Docker.
+
+---
+
+## 🔫 4. LOAD TESTING (K6)
+Gunakan perintah ini untuk mensimulasikan gempuran puluhan ribu pengguna secara bersamaan.
+
+* **Perintah Eksekusi:**
+    ```bash
+    k6 run peak-test.js
+    ```
+* **Syarat k6 Berhasil (Anti-Block):**
+    * Wajib menyisipkan header `Content-Type: application/json` pada request POST.
+    * Wajib menyisipkan header `X-Simulated-IP: 192.168.x.x` (IP Acak) untuk menghindari blokir *Rate Limiter* NGINX/Golang.
+
+---
+
+## 🌐 5. DAFTAR ENDPOINT API & CURL TEST
+
+**1. Cek Kesehatan Server (Health Check)**
+```bash
+curl -I http://localhost/ping
