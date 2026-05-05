@@ -27,10 +27,13 @@ export default function () {
     
     // [TRICK SRE] Bikin IP acak agar tidak diblokir Rate Limiter Golang (Max 30 req/min/IP)
     const randomIP = `192.168.${randomIntBetween(1, 255)}.${randomIntBetween(1, 255)}`;
-    const randomUserID = randomIntBetween(1, 1000);
+
+    // Nomor rekening nasabah di database: 7770000001 - 7770002000
+    const senderNo  = `777${String(randomIntBetween(1, 2000)).padStart(7, '0')}`;
+    const receiverNo = `777${String(randomIntBetween(1, 2000)).padStart(7, '0')}`;
 
     // ==============================================
-    // 1. SKENARIO GET: CEK SALDO
+    // 1. SKENARIO GET: CEK SALDO NASABAH
     // ==============================================
     const getParams = {
         headers: {
@@ -38,20 +41,20 @@ export default function () {
         },
     };
     
-    let resGet = http.get(`${BASE_URL}/users/${randomUserID}/balance`, getParams);
+    let resGet = http.get(`${BASE_URL}/users/${senderNo}/balance`, getParams);
     check(resGet, {
         '✓ Cek Saldo 200': (r) => r.status === 200,
     });
 
 
     // ==============================================
-    // 2. SKENARIO POST: TRANSFER UANG
+    // 2. SKENARIO POST: TRANSFER UANG ANTAR REKENING
     // ==============================================
-    // Format JSON yang wajib sesuai dengan struct TransferRequest di main.go
     const payload = JSON.stringify({
-        sender_id: `user_${randomUserID}`,
-        receiver_id: `user_${randomIntBetween(1001, 2000)}`,
-        amount: randomIntBetween(10000, 500000) // Transfer nominal acak
+        sender_account: senderNo,
+        receiver_account: receiverNo,
+        amount: randomIntBetween(10000, 500000), // Transfer nominal acak Rp 10rb - 500rb
+        keterangan: 'Transfer via k6 load test'
     });
 
     const postParams = {

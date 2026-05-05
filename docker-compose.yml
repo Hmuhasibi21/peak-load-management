@@ -13,24 +13,67 @@ services:
     ports:
       - "80:80" # Membuka Port 80 di laptopmu (Default HTTP)
     depends_on:
-      - api
+      - api1
+      - api2
+      - api3
     networks:
       - elasticsix_net
 
   # ==========================================
-  # API LAYER
+  # API LAYER (3 INSTANCE — LOAD BALANCED)
   # ==========================================
-  # 1. API Service (Golang)
-  api:
-    container_name: elasticsix_api
+  # Instance 1
+  api1:
+    container_name: elasticsix_api_1
     build: .
-    restart: always     # 👈 [TRICK SRE] Babysitter aktif! API Golang akan otomatis bangkit kalau kalah balapan waktu (Race Condition).
-    # FIX BENTROK 1: Port luar diubah ke 8000 agar kamu tetap bisa menjalankan 'go run main.go' di port 8080 laptopmu
+    restart: always
     ports:
-      - "8000:8080"
+      - "8501:8080"
     environment:
       - DB_MASTER_URL=postgres://root:password@postgres:5432/bank_a_db?sslmode=disable
       - DB_REPLICA_URL=postgres://root:password@postgres_replica:5432/bank_a_db?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
+    depends_on:
+      - postgres
+      - postgres_replica
+      - redis
+      - rabbitmq
+    networks:
+      - elasticsix_net
+
+  # Instance 2
+  api2:
+    container_name: elasticsix_api_2
+    build: .
+    restart: always
+    ports:
+      - "8502:8080"
+    environment:
+      - DB_MASTER_URL=postgres://root:password@postgres:5432/bank_a_db?sslmode=disable
+      - DB_REPLICA_URL=postgres://root:password@postgres_replica:5432/bank_a_db?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
+    depends_on:
+      - postgres
+      - postgres_replica
+      - redis
+      - rabbitmq
+    networks:
+      - elasticsix_net
+
+  # Instance 3
+  api3:
+    container_name: elasticsix_api_3
+    build: .
+    restart: always
+    ports:
+      - "8503:8080"
+    environment:
+      - DB_MASTER_URL=postgres://root:password@postgres:5432/bank_a_db?sslmode=disable
+      - DB_REPLICA_URL=postgres://root:password@postgres_replica:5432/bank_a_db?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
     depends_on:
       - postgres
       - postgres_replica
@@ -54,6 +97,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata_master:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - elasticsix_net
 
@@ -68,6 +112,8 @@ services:
     # FIX BENTROK 2: Port luar diset ke 5433 agar tidak berebut dengan port 5432 milik Master
     ports:
       - "5433:5432"
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - elasticsix_net
 

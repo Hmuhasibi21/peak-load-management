@@ -1,0 +1,58 @@
+# =====================================================
+# DOCKER COMPOSE BASELINE — TANPA FITUR SRE
+# Hanya: 1 API + 1 Database (Tanpa NGINX, Redis, RabbitMQ)
+# =====================================================
+version: '3.8'
+
+services:
+  # API Baseline (1 Instance, Tanpa Load Balancer)
+  baseline_api:
+    container_name: elasticsix_baseline_api
+    build:
+      context: .
+      dockerfile: Dockerfile.baseline
+    restart: always
+    ports:
+      - "80:8080"    # Langsung expose ke port 80 (tanpa NGINX)
+    environment:
+      - DATABASE_URL=postgres://root:password@postgres_baseline:5432/bank_a_db?sslmode=disable
+    depends_on:
+      - postgres_baseline
+    networks:
+      - baseline_net
+
+  # Database (1 Instance, Tanpa Read/Write Split)
+  postgres_baseline:
+    image: postgres:15-alpine
+    container_name: elasticsix_baseline_db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: bank_a_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_baseline:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - baseline_net
+
+  # Prometheus (untuk monitoring perbandingan)
+  prometheus_baseline:
+    image: prom/prometheus:latest
+    container_name: elasticsix_baseline_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.baseline.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - baseline_net
+
+networks:
+  baseline_net:
+    driver: bridge
+
+volumes:
+  pgdata_baseline:
