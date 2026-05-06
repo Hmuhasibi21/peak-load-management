@@ -32,8 +32,8 @@ export const options = {
 export default function () {
     const BASE_URL = 'http://localhost';
     const randomIP = `192.168.${randomIntBetween(1, 255)}.${randomIntBetween(1, 255)}`;
-    const senderNo  = `777${String(randomIntBetween(1, 2000)).padStart(7, '0')}`;
-    const receiverNo = `777${String(randomIntBetween(1, 2000)).padStart(7, '0')}`;
+    const senderNo  = `777${String(randomIntBetween(1, 10000)).padStart(7, '0')}`;
+    const receiverNo = `777${String(randomIntBetween(1, 10000)).padStart(7, '0')}`;
 
     const headers = {
         'X-Simulated-IP': randomIP,

@@ -27,7 +27,8 @@ function elk {
     Write-Host '    elk-db-refresh      Reset saldo + hapus transaksi'
     Write-Host '    elk-db-sql          Masuk ke psql Master'
     Write-Host ''
-    Write-Host '  BENCHMARK' -ForegroundColor Yellow
+    Write-Host '  LOAD TEST' -ForegroundColor Yellow
+    Write-Host '    elk-peak            Peak load test biasa'
     Write-Host '    elk-bench           Benchmark Optimized random IP'
     Write-Host '    elk-bench-real      Benchmark Optimized IP unik'
     Write-Host '    elk-bench-baseline  Benchmark Baseline'
@@ -113,21 +114,26 @@ function elk-db-sql {
 }
 
 # =====================================================
-# BENCHMARK
+# LOAD TEST & BENCHMARK
 # =====================================================
+function elk-peak {
+    Write-Host '[elk] Running peak load test...' -ForegroundColor Cyan
+    k6 run load-test/peak-test.js
+}
+
 function elk-bench {
     Write-Host '[elk] Benchmark Optimized...' -ForegroundColor Cyan
-    k6 run load-test/benchmark.js 2>&1 | Tee-Object -FilePath hasil-optimized.txt
+    k6 run load-test/benchmark.js 2>&1 | Tee-Object -FilePath results/hasil-optimized.txt
 }
 
 function elk-bench-real {
     Write-Host '[elk] Benchmark Optimized real-life...' -ForegroundColor Cyan
-    k6 run load-test/benchmark-reallife.js 2>&1 | Tee-Object -FilePath hasil-optimized-reallife.txt
+    k6 run load-test/benchmark-reallife.js 2>&1 | Tee-Object -FilePath results/hasil-optimized-reallife.txt
 }
 
 function elk-bench-baseline {
     Write-Host '[elk] Benchmark Baseline...' -ForegroundColor Cyan
-    k6 run load-test/benchmark.js 2>&1 | Tee-Object -FilePath hasil-baseline.txt
+    k6 run load-test/benchmark.js 2>&1 | Tee-Object -FilePath results/hasil-baseline.txt
 }
 
 function elk-bench-all {
@@ -142,7 +148,7 @@ function elk-bench-all {
     Start-Sleep -Seconds 30
 
     Write-Host '[2/5] Benchmark Baseline...' -ForegroundColor Yellow
-    k6 run load-test/benchmark.js 2>&1 | Tee-Object -FilePath hasil-baseline.txt
+    k6 run load-test/benchmark.js 2>&1 | Tee-Object -FilePath results/hasil-baseline.txt
 
     Write-Host '[3/5] Switching to Optimized...' -ForegroundColor Yellow
     docker compose -f docker-compose.baseline.yml down -v
@@ -151,18 +157,18 @@ function elk-bench-all {
     Start-Sleep -Seconds 30
 
     Write-Host '[4/5] Benchmark Optimized...' -ForegroundColor Yellow
-    k6 run load-test/benchmark.js 2>&1 | Tee-Object -FilePath hasil-optimized.txt
+    k6 run load-test/benchmark.js 2>&1 | Tee-Object -FilePath results/hasil-optimized.txt
 
     Write-Host '[5/5] Analyzing...' -ForegroundColor Yellow
     $env:PYTHONIOENCODING = 'utf-8'
-    python analyze_benchmark.py
+    python analysis/analyze_benchmark.py
 
     Write-Host '' 
     Write-Host '================================================' -ForegroundColor Green
     Write-Host '  DONE! Output files:' -ForegroundColor Green
-    Write-Host '    hasil-baseline.txt'
-    Write-Host '    hasil-optimized.txt'
-    Write-Host '    benchmark_analysis.png'
+    Write-Host '    results/hasil-baseline.txt'
+    Write-Host '    results/hasil-optimized.txt'
+    Write-Host '    results/benchmark_analysis.png'
     Write-Host '================================================' -ForegroundColor Green
 }
 
@@ -172,7 +178,7 @@ function elk-bench-all {
 function elk-analyze {
     Write-Host '[elk] Running analysis...' -ForegroundColor Cyan
     $env:PYTHONIOENCODING = 'utf-8'
-    python analyze_benchmark.py
+    python analysis/analyze_benchmark.py
 }
 
 function elk-ping {

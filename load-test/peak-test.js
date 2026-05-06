@@ -29,8 +29,8 @@ export default function () {
     const randomIP = `192.168.${randomIntBetween(1, 255)}.${randomIntBetween(1, 255)}`;
 
     // Nomor rekening nasabah di database: 7770000001 - 7770002000
-    const senderNo  = `777${String(randomIntBetween(1, 2000)).padStart(7, '0')}`;
-    const receiverNo = `777${String(randomIntBetween(1, 2000)).padStart(7, '0')}`;
+    const senderNo  = `777${String(randomIntBetween(1, 10000)).padStart(7, '0')}`;
+    const receiverNo = `777${String(randomIntBetween(1, 10000)).padStart(7, '0')}`;
 
     // ==============================================
     // 1. SKENARIO GET: CEK SALDO NASABAH

@@ -50,8 +50,8 @@ export default function () {
     const uniqueIP = `10.${vu}.${octet3}.${octet4}`;
 
     // Nomor rekening random dari database (7770000001 - 7770002000)
-    const senderNo  = `777${String(randomIntBetween(1, 2000)).padStart(7, '0')}`;
-    const receiverNo = `777${String(randomIntBetween(1, 2000)).padStart(7, '0')}`;
+    const senderNo  = `777${String(randomIntBetween(1, 10000)).padStart(7, '0')}`;
+    const receiverNo = `777${String(randomIntBetween(1, 10000)).padStart(7, '0')}`;
 
     const headers = { 'X-Simulated-IP': uniqueIP };
 

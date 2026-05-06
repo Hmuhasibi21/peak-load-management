@@ -485,7 +485,8 @@ func main() {
 		var minSaldo, maxSaldo, avgSaldo int64
 
 		// Statistik nasabah
-		dbReplica.QueryRow(`
+		// Statistik nasabah (dari Master — karena replica tidak sync otomatis)
+		dbMaster.QueryRow(`
 			SELECT 
 				COUNT(*),
 				COUNT(*) FILTER (WHERE saldo <= 0),
@@ -498,7 +499,7 @@ func main() {
 		`).Scan(&totalNasabah, &saldoKosong, &saldoRendah, &nonAktif, &minSaldo, &maxSaldo, &avgSaldo)
 
 		// Total transaksi
-		dbReplica.QueryRow("SELECT COUNT(*) FROM transaksi").Scan(&totalTransaksi)
+		dbMaster.QueryRow("SELECT COUNT(*) FROM transaksi").Scan(&totalTransaksi)
 
 		// Status kesehatan
 		status := "sehat"

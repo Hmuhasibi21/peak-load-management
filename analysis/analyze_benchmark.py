@@ -258,7 +258,7 @@ def create_charts(baseline, optimized, output_dir='.'):
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
 
-    output_path = os.path.join(output_dir, 'benchmark_analysis.png')
+    output_path = os.path.join('results', 'benchmark_analysis.png')
     plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"✅ Grafik disimpan: {output_path}")
@@ -333,8 +333,8 @@ def print_report(baseline, optimized):
 # 4. MAIN
 # ============================================================
 if __name__ == '__main__':
-    baseline_file = 'hasil-baseline.txt'
-    optimized_file = 'hasil-optimized.txt'
+    baseline_file = os.path.join('results', 'hasil-baseline.txt')
+    optimized_file = os.path.join('results', 'hasil-optimized.txt')
 
     # Cek file ada
     if not os.path.exists(baseline_file):

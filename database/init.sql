@@ -50,7 +50,7 @@ CREATE INDEX idx_transaksi_penerima ON transaksi(rekening_penerima);
 CREATE INDEX idx_transaksi_status ON transaksi(status);
 
 -- =====================================================
--- 4. SEED DATA: 2000 Nasabah dengan data realistis
+-- 4. SEED DATA: 10.000 Nasabah dengan data realistis
 -- =====================================================
 INSERT INTO nasabah (
     nomor_rekening, nama_lengkap, nik, tempat_lahir, tanggal_lahir,
@@ -138,12 +138,8 @@ SELECT
     -- Jenis Rekening (90% tabungan, 10% giro)
     CASE WHEN n % 10 = 0 THEN 'giro' ELSE 'tabungan' END,
 
-    -- Status Rekening (95% aktif)
-    CASE
-        WHEN n % 100 = 0 THEN 'dormant'
-        WHEN n % 50 = 0 THEN 'blokir'
-        ELSE 'aktif'
-    END,
+    -- Status Rekening (semua aktif untuk load test)
+    'aktif',
 
     -- Cabang
     (ARRAY[
@@ -152,7 +148,7 @@ SELECT
         'KCP Semarang Simpang Lima','KCP Denpasar Sanur','KCP Medan Merdeka','KCP Makassar Losari'
     ])[1 + (n-1) % 10]
 
-FROM generate_series(1, 2000) AS n;
+FROM generate_series(1, 10000) AS n;
 
 -- Tampilkan jumlah data
 DO $$ BEGIN RAISE NOTICE 'Berhasil membuat % nasabah', (SELECT count(*) FROM nasabah); END $$;
