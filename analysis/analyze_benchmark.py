@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 
-matplotlib.rcParams['font.family'] = 'Segoe UI'
+matplotlib.rcParams['font.family'] = 'sans-serif'
 matplotlib.rcParams['font.size'] = 11
 
 # ============================================================
@@ -258,7 +258,10 @@ def create_charts(baseline, optimized, output_dir='.'):
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
 
-    output_path = os.path.join('results', 'benchmark_analysis.png')
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'benchmark_analysis_{timestamp}.png'
+    output_path = os.path.join('results', filename)
     plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"✅ Grafik disimpan: {output_path}")
