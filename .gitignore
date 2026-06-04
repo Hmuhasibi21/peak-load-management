@@ -1,0 +1,11 @@
+# Hasil benchmark dan grafik
+results/
+hasil-*.txt
+hasil-*.json
+
+# Data PostgreSQL
+pgdata_master/
+pgdata_baseline/
+
+# Golang
+*.exe

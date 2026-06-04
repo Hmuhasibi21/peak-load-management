@@ -51,16 +51,34 @@ def parse_benchmark(filepath):
             val = match.group(1).replace(',', '')
             metrics[key] = float(val)
 
-    # Parse check results
-    cek_saldo = re.search(r'Cek Saldo OK.*?(\d+)\s*/\s*.*?(\d+)', content)
-    transfer = re.search(r'Transfer OK.*?(\d+)\s*/\s*.*?(\d+)', content)
+    # Hapus ANSI escape codes
+    clean_content = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', content)
+    
+    # Ambil total iterasi sebagai fallback jika 100% success (k6 tidak print breakdown)
+    iters_match = re.search(r'iterations\s*\.+:\s*(\d+)', clean_content)
+    total_iters = int(iters_match.group(1)) if iters_match else 0
 
-    if cek_saldo:
-        metrics['cek_saldo_pass'] = int(cek_saldo.group(1))
-        metrics['cek_saldo_fail'] = int(cek_saldo.group(2))
-    if transfer:
-        metrics['transfer_pass'] = int(transfer.group(1))
-        metrics['transfer_fail'] = int(transfer.group(2))
+    # Parsing Cek Saldo OK
+    if 'Cek Saldo OK' in clean_content:
+        fail_match = re.search(r'Cek Saldo OK.*?\n\s*↳.*?✗\s*(\d+)', clean_content)
+        if fail_match:
+            metrics['cek_saldo_fail'] = int(fail_match.group(1))
+            pass_match = re.search(r'Cek Saldo OK.*?\n\s*↳.*?✓\s*(\d+)', clean_content)
+            metrics['cek_saldo_pass'] = int(pass_match.group(1)) if pass_match else (total_iters - metrics['cek_saldo_fail'])
+        else:
+            metrics['cek_saldo_pass'] = total_iters
+            metrics['cek_saldo_fail'] = 0
+
+    # Parsing Transfer OK
+    if 'Transfer OK' in clean_content:
+        fail_match = re.search(r'Transfer OK.*?\n\s*↳.*?✗\s*(\d+)', clean_content)
+        if fail_match:
+            metrics['transfer_fail'] = int(fail_match.group(1))
+            pass_match = re.search(r'Transfer OK.*?\n\s*↳.*?✓\s*(\d+)', clean_content)
+            metrics['transfer_pass'] = int(pass_match.group(1)) if pass_match else (total_iters - metrics['transfer_fail'])
+        else:
+            metrics['transfer_pass'] = total_iters
+            metrics['transfer_fail'] = 0
 
     return metrics
 
@@ -167,14 +185,36 @@ def create_charts(baseline, optimized, output_dir='.'):
     ]
 
     x = np.arange(len(tests))
-    ax4.bar(x, pass_vals, width=0.6, label='✓ Success', color='#2ecc71', edgecolor='white')
-    ax4.bar(x, fail_vals, width=0.6, bottom=pass_vals, label='✗ Failed', color='#e74c3c', edgecolor='white')
+    bars_pass = ax4.bar(x, pass_vals, width=0.6, label='✓ Success', color='#2ecc71', edgecolor='white')
+    bars_fail = ax4.bar(x, fail_vals, width=0.6, bottom=pass_vals, label='✗ Failed', color='#e74c3c', edgecolor='white')
+
+    # Tambahkan label angka di tengah bar success
+    for bar in bars_pass:
+        height = bar.get_height()
+        if height > 0:
+            ax4.text(bar.get_x() + bar.get_width()/2., height/2,
+                     f'{int(height):,}', ha='center', va='center', fontweight='bold', fontsize=11, color='white')
+
+    # Tambahkan label angka gagal
+    for bar_p, bar_f in zip(bars_pass, bars_fail):
+        h_fail = bar_f.get_height()
+        h_pass = bar_p.get_height()
+        if h_fail > 0:
+            ax4.text(bar_f.get_x() + bar_f.get_width()/2., h_pass + h_fail,
+                     f'✗ {int(h_fail):,}', ha='center', va='bottom', fontweight='bold', fontsize=10, color='#c0392b')
+
+    # Atur skala sumbu Y agar perbedaan kecil lebih terlihat (zoom-in efek)
+    valid_pass = [v for v in pass_vals if v > 0]
+    if valid_pass:
+        min_val = min(valid_pass)
+        # Mulai sumbu Y dari 90% nilai terendah agar grafiknya tidak flat
+        ax4.set_ylim(bottom=min_val * 0.90)
 
     ax4.set_xticks(x)
     ax4.set_xticklabels(tests, fontsize=9)
     ax4.set_ylabel('Jumlah Request')
     ax4.set_title('📋 Success vs Failed per Endpoint', fontweight='bold', fontsize=14)
-    ax4.legend()
+    ax4.legend(loc='upper right')
     ax4.grid(axis='y', alpha=0.3)
 
     # -----------------------------------------------------------
@@ -275,6 +315,8 @@ def print_report(baseline, optimized):
     """Cetak analisis teks ke terminal."""
 
     def pct_change(old, new, lower_is_better=True):
+        if old == 0:
+            return 0.0 if new == 0 else (-100.0 if lower_is_better else 100.0)
         change = ((old - new) / old) * 100 if lower_is_better else ((new - old) / old) * 100
         return change
 
