@@ -1,0 +1,47 @@
+version: '3.8'
+
+# =========================================================================
+# DOCKER COMPOSE FOR AWS AUTO SCALING GROUP (ASG)
+# =========================================================================
+# File ini dirancang khusus untuk dijalankan di instance EC2 di dalam ASG.
+# Hanya menjalankan service API saja. Database (PostgreSQL), Cache (Redis),
+# dan Queue (RabbitMQ) harus berjalan secara terpusat (seperti AWS RDS,
+# AWS ElastiCache, Amazon MQ, atau shared EC2 instance terpisah) agar tidak 
+# terjadi tabrakan data atau duplikasi database saat ASG melakukan scale-out.
+# =========================================================================
+
+services:
+  api:
+    # Disarankan menggunakan pre-built image dari Amazon ECR (Elastic Container Registry)
+    # agar proses start-up instance saat scaling lebih cepat (tidak perlu build Go).
+    image: ${API_IMAGE:-elasticsix-api:latest}
+    # Jika terpaksa build langsung di instance (tidak direkomendasikan untuk ASG):
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: elasticsix_api_asg
+    restart: always
+    
+    # Expose port 80 pada host EC2 ke port 8080 di dalam container
+    # Ini memudahkan AWS Application Load Balancer (ALB) untuk mengarahkan traffic
+    # dan melakukan health check langsung ke port 80 pada EC2 instance.
+    ports:
+      - "${HOST_PORT:-80}:8080"
+    
+    # Kebutuhan koneksi ke SRE stack pusat/terpusat
+    # Nilai ini harus disediakan melalui environment variables OS (misalnya lewat User Data EC2)
+    # atau menggunakan file .env di direktori yang sama.
+    environment:
+      - DB_MASTER_URL=postgres://${DB_USER:-root}:${DB_PASSWORD:-password}@${DB_HOST:-172.31.28.90}:${DB_PORT:-5432}/${DB_NAME:-bank_a_db}?sslmode=disable
+      - DB_REPLICA_URL=postgres://${DB_USER:-root}:${DB_PASSWORD:-password}@${DB_HOST:-172.31.28.90}:${DB_REPLICA_PORT:-5433}/${DB_NAME:-bank_a_db}?sslmode=disable
+      - REDIS_ADDR=${REDIS_HOST:-172.31.28.90}:${REDIS_PORT:-6379}
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin123}@${RABBITMQ_HOST:-172.31.28.90}:${RABBITMQ_PORT:-5672}/
+
+
+    # Integrasi CloudWatch Logging (Opsional, silakan aktifkan jika IAM Role EC2 mendukung)
+    # logging:
+    #   driver: "awslogs"
+    #   options:
+    #     awslogs-group: "elasticsix-api-logs"
+    #     awslogs-stream: "api-asg"
+    #     awslogs-region: "ap-southeast-1"
